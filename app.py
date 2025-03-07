@@ -12,10 +12,10 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
 
 # Configuración de la base de datos usando PyMySQL
 CONFIG_BD = {
-    'host': 'beseuh7ma1cvxldur6ol-mysql.services.clever-cloud.com',
-    'user': 'uyudmrvrkew3rngs',
-    'password': 'u0BlOxO6jl1EObPkDyBT',
-    'database': 'beseuh7ma1cvxldur6ol'
+    'host': 'Archivo.mysql.pythonanywhere-services.com',
+    'user': 'Archivo',
+    'password': 'Archivo@fondrummond.com',
+    'database': 'Archivo$Archivo'
 }
 
 login_manager = LoginManager(app)
