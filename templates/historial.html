@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .selected {
+        border: 2px solid blue; /* Cambia el color según tu preferencia */
+    }
+</style>
+
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">Historial de Búsquedas</h2>
+        <form id="clearHistoryForm" action="/historial/limpiar" method="POST">
+            <button type="button" onclick="confirmClearHistory()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+                <i data-lucide="trash-2" class="h-5 w-5 mr-2"></i>
+                Limpiar Historial
+            </button>
+            <button type="button" onclick="performActionOnSelected()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 ml-2">
+                <i data-lucide="check" class="h-5 w-5 mr-2"></i>
+                Cambiar Estado
+            </button>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for record in records %}
+        <div id="card-{{ record.id }}" onclick="toggleSelectCard({{ record.id }})" class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-all {% if record.en_uso == 'En Uso' %}border-l-4 border-green-500 bg-green-50{% endif %}">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Tipo</p>
+                        <p class="mt-1">{{ record.tipo }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Número</p>
+                        <p class="mt-1">{{ record.numero }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Módulo</p>
+                        <p class="mt-1">{{ record.modulo }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Año</p>
+                        <p class="mt-1">{{ record.año }}</p>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Ubicación</p>
+                    <p class="mt-1">{{ record.ubicacion }}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Fecha de Búsqueda</p>
+                    <p class="mt-1">{{ record.fecha_busqueda.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Estado</p>
+                    <p class="mt-1 estado {% if record.en_uso == 'En Uso' %}text-green-600 font-semibold{% endif %}">
+                        {{ record.en_uso }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Include SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+let selectedCards = [];
+
+function toggleSelectCard(id) {
+    const card = document.getElementById(`card-${id}`);
+    card.classList.toggle('selected');
+
+    if (selectedCards.includes(id)) {
+        selectedCards = selectedCards.filter(cardId => cardId !== id);
+    } else {
+        selectedCards.push(id);
+    }
+}
+
+function performActionOnSelected() {
+    if (selectedCards.length === 0) {
+        Swal.fire({
+            title: 'Error',
+            text: 'No has seleccionado ninguna tarjeta',
+            icon: 'error'
+        });
+        return;
+    }
+
+    // Confirmar la acción de cambiar el estado
+    Swal.fire({
+        title: '¿Cambiar estado?',
+        text: '¿Confirmas el cambio de estado para los archivos seleccionados?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#4caf50',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, cambiar estado',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            selectedCards.forEach(id => {
+                const card = document.getElementById(`card-${id}`);
+                const estado = card.querySelector('.estado').textContent.trim(); // Obtener el estado actual
+
+                // Cambiar el estado según el estado actual
+                const accion = (estado === 'En Uso') ? 'eliminar_de_uso' : 'marcar_en_uso';
+                cambiarEstado(id, accion);
+            });
+        }
+    });
+}
+
+function confirmClearHistory() {
+    Swal.fire({
+        title: '¿Limpiar historial?',
+        text: "Esta acción no se puede deshacer",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, limpiar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('clearHistoryForm').submit();
+        }
+    });
+}
+
+function cambiarEstado(id, accion) {
+    fetch(`/api/cambiar-estado/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            accion: accion
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                title: '¡Éxito!',
+                text: 'El estado ha sido cambiado.', // Mensaje modificado
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                location.reload();
+            });
+        } else {
+            Swal.fire({
+                title: 'Error',
+                text: data.error || 'Error al cambiar el estado',
+                icon: 'error'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            title: 'Error',
+            text: 'Error al cambiar el estado: ' + error.message,
+            icon: 'error'
+        });
+    });
+}
+</script>
+{% endblock %}
